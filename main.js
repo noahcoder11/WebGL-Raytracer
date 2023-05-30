@@ -17,9 +17,9 @@ gl.fullScreen()
 gl.size(600, 400)
 
 vertices = [
-        1, 1,
+     1, 1,
     -1, 1,
-        1,-1,
+     1,-1,
     -1,-1
 ]
 
@@ -50,7 +50,7 @@ const v2Position = gl.vertexAttrib(program, "aPosition", vertexBuffer, 2)
 const camPos = gl.getUniform(program, "camPos");
 const camLk = gl.getUniform(program, "camLook");
 
-let cam = [-2, 2, 1]
+let cam = [0, 0, 0]
 let camLook = [0, 0, -1]
 
 gl.ctx.useProgram(program)
@@ -80,6 +80,13 @@ function render() {
     }
     if(keys[40]) {
         camLook[2] += 0.1;
+    }
+
+    if(keys[32]) {
+        cam[1] += 0.1;
+    }
+    if(keys[16]) {
+        cam[1] -= 0.1;
     }
     
     gl.ctx.uniform3fv(camPos, cam)

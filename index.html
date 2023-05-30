@@ -129,9 +129,9 @@
                 bool cannot_refract = ratio * sin_theta > 1.;
 
                 if(cannot_refract || reflectance(cos_theta, ratio) > random_range(0., 1., length(i.position))) {
-                    s.scatter.dir = reflect(unit_dir, i.normal);
+                    s.scatter.dir = reflect(unit_dir, i.normal) + i.mat.fuzziness * random_unit(length(i.position));
                 }else {
-                    s.scatter.dir = refract(unit_dir, i.normal, ratio);
+                    s.scatter.dir = refract(unit_dir, i.normal, ratio) + i.mat.fuzziness * random_unit(length(i.position));
                 }
 
                 return s;
@@ -275,7 +275,7 @@
                 sphere_list world;
 
                 material m1 = create_material(vec3(0.1, .2, .5), 0., 0., 0);
-                material m2 = create_material(vec3(.8, .8, .8), 0.3, 1.5, 2);
+                material m2 = create_material(vec3(.8, .8, .8), 0., 1.5, 2);
                 material m3 = create_material(vec3(.8, .6, .2), 0., 0., 1);
                 material gm = create_material(vec3(.8, .8, 0.), 0., 0., 0);
                 
@@ -285,7 +285,7 @@
                 world.spheres[3] = create_sphere(vec3(0., -100.5, -1.), 100., gm);
                 world.spheres[4] = create_sphere(vec3(-1., 0., -1.), -.45, m2);
                 
-                const float samples = 30.;
+                const float samples = 10.;
 
                 camera cam = create_camera(camPos, camLook, vec3(0, 1, 0), 50., 599. / 400.);
 
