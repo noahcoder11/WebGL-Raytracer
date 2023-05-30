@@ -3,8 +3,26 @@
     <head>
         <meta charset="utf-8">
         <title>WebGL Raytacer Experimentation</title>
+        <style>
+            #controls {
+                position: absolute;
+                left: 650px;
+                display: flex;
+                flex-direction: column;
+            }
+        </style>
     </head>
     <body>
+        <div id="controls">
+            <p>Camera X: </p>
+            <input id = "camX" name = "camX" type = "range" min = "-10" max = "10" value = "3" step = "0.01">
+            <p>Camera Y: </p>
+            <input id = "camY" name = "camY" type = "range" min = "-10" max = "10" value = "3" step = "0.01">
+            <p>Camera Z: </p>
+            <input id = "camZ" name = "camZ" type = "range" min = "-10" max = "10" value = "2" step = "0.01">
+            
+        </div>
+
         <script src = "lib/WebGL.js"></script>
         <script id = "fragmentShader" type = "glsl">
             precision mediump float;
@@ -13,6 +31,7 @@
             
             uniform vec3 camPos;
             uniform vec3 camLook;
+            uniform vec2 camInfo;
 
             const float infinity = 1. / 0.;
 
@@ -22,12 +41,21 @@
             vec3 random_vec(float min, float max, float x) {
                 return vec3(random_range(min, max, x - 1.5), random_range(min, max, x), random_range(min, max, x + 1.5));
             }
-            vec3 random_unit(float x) {
+            vec3 random_in_unit_sphere(float x) {
                 vec3 p = random_vec(-1., 1., x);
+
+                if(length(p) >= 1.) {
+                    return normalize(p);
+                }else {
+                    return p;
+                }
+            }
+            vec3 random_unit_vec(float x) {
+                vec3 p = random_in_unit_sphere(x);
                 return normalize(p);
             }
             vec3 random_in_hemisphere(vec3 normal, float x) {
-                vec3 in_unit = random_unit(x);
+                vec3 in_unit = random_in_unit_sphere(x);
                 if(dot(in_unit, normal) > 0.) {
                     return in_unit;
                 }else {
@@ -101,7 +129,7 @@
             scatter_info lambertian(ray r, hit_info i) {
                 scatter_info s;
 
-                vec3 scatter_dir = i.normal + random_unit(length(i.position));
+                vec3 scatter_dir = i.normal + random_unit_vec(length(i.position));
 
                 if(vec_near_zero(scatter_dir)) {
                     scatter_dir = i.normal;
@@ -118,7 +146,7 @@
 
                 vec3 reflected = reflect(normalize(r.dir), i.normal);
                 s.scatter.origin = i.position;
-                s.scatter.dir = reflected + i.mat.fuzziness * random_unit(length(i.position));
+                s.scatter.dir = reflected + i.mat.fuzziness * random_in_unit_sphere(length(i.position));
                 
                 s.color = i.mat.albedo;
 
@@ -138,9 +166,9 @@
                 bool cannot_refract = ratio * sin_theta > 1.;
 
                 if(cannot_refract || reflectance(cos_theta, ratio) > random_range(0., 1., length(i.position))) {
-                    s.scatter.dir = reflect(unit_dir, i.normal) + i.mat.fuzziness * random_unit(length(i.position));
+                    s.scatter.dir = reflect(unit_dir, i.normal) + i.mat.fuzziness * random_in_unit_sphere(length(i.position));
                 }else {
-                    s.scatter.dir = refract(unit_dir, i.normal, ratio) + i.mat.fuzziness * random_unit(length(i.position));
+                    s.scatter.dir = refract(unit_dir, i.normal, ratio) + i.mat.fuzziness * random_in_unit_sphere(length(i.position));
                 }
 
                 return s;
@@ -304,7 +332,7 @@
                 
                 const float samples = 10.;
 
-                camera cam = create_camera(camPos, camLook, vec3(0, 1, 0),  20., 599. / 400., .5, length(camPos - camLook));
+                camera cam = create_camera(camPos, camLook, vec3(0, 1, 0),  20., 599. / 400., 0., length(camPos - camLook));
 
                 for(float i = 0.;i < samples;i += 1.) {
                     ray r = get_ray(cam, .5 + vPosition.x + cos(samples / i * 3.14) / (random_range(300., 1000., vPosition.x)), .5 + vPosition.y + sin(samples / i * 3.14) / (random_range(300., 1000., vPosition.y)));

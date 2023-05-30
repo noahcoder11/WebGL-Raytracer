@@ -50,44 +50,17 @@ const v2Position = gl.vertexAttrib(program, "aPosition", vertexBuffer, 2)
 const camPos = gl.getUniform(program, "camPos");
 const camLk = gl.getUniform(program, "camLook");
 
-let cam = [3, 3, 2]
+let cx = document.getElementById("camX")
+let cy = document.getElementById("camY")
+let cz = document.getElementById("camZ")
+
+
 let camLook = [0, 0, -1]
 
 gl.ctx.useProgram(program)
 
 function render() {
-    if(keys.a) {
-        cam[0] -= 0.1;
-    }
-    if(keys.d) {
-        cam[0] += 0.1;
-    }
-    if(keys.w) {
-        cam[2] -= 0.1;
-    }
-    if(keys.s) {
-        cam[2] += 0.1;
-    }
-    
-    if(keys[37]) {
-        camLook[0] -= 0.1;
-    }
-    if(keys[39]) {
-        camLook[0] += 0.1;
-    }
-    if(keys[38]) {
-        camLook[2] -= 0.1;
-    }
-    if(keys[40]) {
-        camLook[2] += 0.1;
-    }
-
-    if(keys[32]) {
-        cam[1] += 0.1;
-    }
-    if(keys[16]) {
-        cam[1] -= 0.1;
-    }
+    let cam = [cx.value, cy.value, cz.value]
     
     gl.ctx.uniform3fv(camPos, cam)
     gl.ctx.uniform3fv(camLk, camLook)
