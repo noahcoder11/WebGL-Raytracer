@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>WebGL Raytacer Experimentation</title>
+    </head>
+    <body>
+        <script src = "lib/WebGL.js"></script>
+        <script id = "fragmentShader" type = "glsl">
+            precision mediump float;
+
+            varying vec2 vPosition;
+            
+            uniform vec3 camPos;
+            uniform vec3 camLook;
+
+            const float infinity = 1. / 0.;
+
+            float random_range(float min, float max, float x) {
+                return fract(sin(x) * 1000000.) * (max - min) + min;
+            }
+            vec3 random_vec(float min, float max, float x) {
+                return vec3(random_range(min, max, x - 1.5), random_range(min, max, x), random_range(min, max, x + 1.5));
+            }
+            vec3 random_unit(float x) {
+                vec3 p = random_vec(-1., 1., x);
+                return normalize(p);
+            }
+            vec3 random_in_hemisphere(vec3 normal, float x) {
+                vec3 in_unit = random_unit(x);
+                if(dot(in_unit, normal) > 0.) {
+                    return in_unit;
+                }else {
+                    return -in_unit;
+                }
+            }
+            bool vec_near_zero(vec3 v) {
+                const float s = 1e-8;
+                return (abs(v.x) < s) && (abs(v.y) < s) && (abs(v.z) < s);
+            }
+            float reflectance(float cosine, float ref_idx) {
+                float r0 = (1. - ref_idx) / (1. + ref_idx);
+                r0 = r0 * r0;
+                return r0 + (1. - r0) * pow((1. - cosine), 5.);
+            }
+
+            struct ray {
+                vec3 origin;
+                vec3 dir;
+            };
+            vec3 ray_at(ray r, float t) {
+                return r.origin + r.dir * t;
+            }
+
+            struct material {
+                vec3 albedo;
+                float fuzziness;
+                float index_of_refraction;
+                int type;
+            };
+            material create_material(vec3 albedo, float fuzziness, float index_of_refraction, int type) {
+                material m;
+                m.albedo = albedo;
+                m.fuzziness = fuzziness;
+                m.index_of_refraction = index_of_refraction;
+                m.type = type;
+
+                return m;
+            }
+
+            struct hit_info {
+                vec3 position;
+                vec3 normal;
+                float t;
+                bool front_face;
+                bool hit;
+                material mat;
+            };
+            hit_info set_face_normal(hit_info i, ray r, vec3 outward_normal) {
+                hit_info new;
+                new = i;
+                new.front_face = dot(r.dir, outward_normal) < 0.;
+                new.normal = new.front_face ? outward_normal : -outward_normal;
+
+                return new;
+            }
+
+            struct scatter_info {
+                ray scatter;
+                vec3 color;
+            };
+            scatter_info lambertian(ray r, hit_info i) {
+                scatter_info s;
+
+                vec3 scatter_dir = i.normal + random_unit(length(i.position));
+
+                if(vec_near_zero(scatter_dir)) {
+                    scatter_dir = i.normal;
+                }
+
+                s.scatter.origin = i.position;
+                s.scatter.dir = scatter_dir;
+                s.color = i.mat.albedo;
+
+                return s;
+            }
+            scatter_info metal(ray r, hit_info i) {
+                scatter_info s;
+
+                vec3 reflected = reflect(normalize(r.dir), i.normal);
+                s.scatter.origin = i.position;
+                s.scatter.dir = reflected + i.mat.fuzziness * random_unit(length(i.position));
+                
+                s.color = i.mat.albedo;
+
+                return s;
+            }
+            scatter_info dielectric(ray r, hit_info i) {
+                scatter_info s;
+                s.color = vec3(1., 1., 1.);
+                s.scatter.origin = i.position;
+
+                float ratio = !i.front_face ? (1. / i.mat.index_of_refraction) : i.mat.index_of_refraction;
+
+                vec3 unit_dir = normalize(r.dir);
+                float cos_theta = min(dot(-unit_dir, i.normal), 1.);
+                float sin_theta = sqrt(1. - cos_theta * cos_theta);
+
+                bool cannot_refract = ratio * sin_theta > 1.;
+
+                if(cannot_refract || reflectance(cos_theta, ratio) > random_range(0., 1., length(i.position))) {
+                    s.scatter.dir = reflect(unit_dir, i.normal);
+                }else {
+                    s.scatter.dir = refract(unit_dir, i.normal, ratio);
+                }
+
+                return s;
+            }
+
+            struct sphere {
+                vec3 center;
+                float radius;
+                vec3 color;
+                material mat;
+            };
+            sphere create_sphere(vec3 c, float r, material m) {
+                sphere s;
+                s.center = c;
+                s.radius = r;
+                s.mat = m;
+
+                return s;
+            }
+            hit_info hit_sphere(sphere s, ray r, float t_min, float t_max) {
+                hit_info i;
+
+                vec3 oc = r.origin - s.center;
+                float a = length(r.dir) * length(r.dir);
+                float half_b = dot(oc, r.dir);
+                float c = length(oc) * length(oc) - s.radius * s.radius;
+
+                float discriminant = half_b * half_b - a * c;
+
+                if(discriminant < 0.0) { return i; }
+
+                float sqrtd = sqrt(discriminant);
+
+                float root = (-half_b - sqrtd) / a;
+
+                if(root < t_min || t_max < root) {
+                    root = (-half_b + sqrtd) / a;
+
+                    if(root < t_min || t_max < root) { return i; }
+                }
+
+                if(root < t_min || t_max < root) { return i; }
+
+                i.t = root;
+                i.position = ray_at(r, i.t);
+                vec3 outward_normal = (s.center - i.position) / s.radius;
+                i = set_face_normal(i, r, outward_normal);
+                i.mat = s.mat;
+                i.hit = true;
+
+                return i;
+            }
+
+            struct sphere_list {
+                sphere spheres[5];
+            };
+            hit_info hit_sphere_list(sphere_list l, ray r, float t_min, float t_max) {
+                hit_info final;
+                final.hit = false;
+                hit_info temp_info;
+                float closest = t_max;
+
+                for(int j = 0;j < 5;j++) {
+                    temp_info = hit_sphere(l.spheres[j], r, t_min, closest);
+
+                    if(temp_info.hit) {
+                        closest = temp_info.t;
+                        final = temp_info;
+                    }
+                }
+
+                return final;
+            }
+
+            struct camera {
+                vec3 origin;
+                vec3 lower_left_corner;
+                vec3 horizontal;
+                vec3 vertical;
+            };
+            camera create_camera(vec3 lookfrom, vec3 lookat, vec3 up, float fov, float aspect_ratio){
+                camera c;
+                float theta = radians(fov);
+                float h = tan(theta / 2.);
+                float viewport_height = 2. * h;
+                float viewport_width = aspect_ratio * viewport_height;
+
+                vec3 w = normalize(lookfrom - lookat);
+                vec3 u = normalize(cross(up, w));
+                vec3 v = cross(w, u);
+
+                c.origin = lookfrom;
+                c.horizontal = viewport_width * u;
+                c.vertical = viewport_height * v;
+                c.lower_left_corner = c.origin - c.horizontal / 2. - c.vertical / 2. - w;
+
+                return c;
+            }
+            ray get_ray(camera c, float s, float t) {
+                ray r;
+                r.origin = c.origin;
+                r.dir = c.lower_left_corner + s * c.horizontal + t * c.vertical - c.origin;
+
+                return r;
+            }
+
+            vec3 ray_color(ray r, sphere_list l) {
+                ray c = r;
+                vec3 color = vec3(1., 1., 1.);
+                bool hit = false;
+
+                for(int d = 0;d < 50;d++) {
+                    hit_info i = hit_sphere_list(l, c, .001, infinity);
+
+                    if(i.hit) {
+                        hit = true;
+                        scatter_info s;
+
+                        if(i.mat.type == 0) {
+                            s = lambertian(c, i);
+                        }else if(i.mat.type == 1) {
+                            s = metal(c, i);
+                        }else if(i.mat.type == 2) {
+                            s = dielectric(c, i);
+                        }
+
+                        color *= s.color;
+                        c = s.scatter;
+                    }else {
+                        vec3 unit_dir = normalize(c.dir);
+                        float t = .5 * (unit_dir.y + 1.);
+                        color *= (1. - t) * vec3(1., 1., 1.) + t * vec3(.5, .7, 1.);
+                        break;
+                    }
+                }
+
+                return color;
+            }
+
+            void main() {
+                sphere_list world;
+
+                material m1 = create_material(vec3(0.1, .2, .5), 0., 0., 0);
+                material m2 = create_material(vec3(.8, .8, .8), 0.3, 1.5, 2);
+                material m3 = create_material(vec3(.8, .6, .2), 0., 0., 1);
+                material gm = create_material(vec3(.8, .8, 0.), 0., 0., 0);
+                
+                world.spheres[0] = create_sphere(vec3(0., 0., -1.), .5, m1);
+                world.spheres[1] = create_sphere(vec3(-1., 0., -1.), .5, m2);
+                world.spheres[2] = create_sphere(vec3(1., 0., -1.), .5, m3);
+                world.spheres[3] = create_sphere(vec3(0., -100.5, -1.), 100., gm);
+                world.spheres[4] = create_sphere(vec3(-1., 0., -1.), -.45, m2);
+                
+                const float samples = 30.;
+
+                camera cam = create_camera(camPos, camLook, vec3(0, 1, 0), 50., 599. / 400.);
+
+                for(float i = 0.;i < samples;i += 1.) {
+                    ray r = get_ray(cam, .5 + vPosition.x + cos(samples / i * 3.14) / (random_range(300., 1000., vPosition.x)), .5 + vPosition.y + sin(samples / i * 3.14) / (random_range(300., 1000., vPosition.y)));
+
+                    vec3 pixel = ray_color(r, world);
+                    gl_FragColor += sqrt(vec4(pixel, 1.)) / samples;
+                }
+            }
+        </script>
+        <script src = "main.js"></script>
+        
+    </body>
+</html>
