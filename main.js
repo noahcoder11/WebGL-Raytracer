@@ -50,7 +50,7 @@ const v2Position = gl.vertexAttrib(program, "aPosition", vertexBuffer, 2)
 const camPos = gl.getUniform(program, "camPos");
 const camLk = gl.getUniform(program, "camLook");
 
-let cam = [0, 0, 0]
+let cam = [3, 3, 2]
 let camLook = [0, 0, -1]
 
 gl.ctx.useProgram(program)
