@@ -34,6 +34,15 @@
                     return -in_unit;
                 }
             }
+            vec3 random_in_unit_disk(float x) {
+                vec3 p = vec3(random_range(-1., 1., x - 100.), random_range(-1., 1., x + 100.), 0.);
+
+                if(length(p) >= 1.) {
+                    return normalize(p);
+                }else {
+                    return p;
+                }
+            }
             bool vec_near_zero(vec3 v) {
                 const float s = 1e-8;
                 return (abs(v.x) < s) && (abs(v.y) < s) && (abs(v.z) < s);
@@ -211,29 +220,37 @@
                 vec3 lower_left_corner;
                 vec3 horizontal;
                 vec3 vertical;
+                vec3 u;
+                vec3 v;
+                vec3 w;
+                float lens_radius;
             };
-            camera create_camera(vec3 lookfrom, vec3 lookat, vec3 up, float fov, float aspect_ratio){
+            camera create_camera(vec3 lookfrom, vec3 lookat, vec3 up, float fov, float aspect_ratio, float aperture, float focus_dist){
                 camera c;
                 float theta = radians(fov);
                 float h = tan(theta / 2.);
                 float viewport_height = 2. * h;
                 float viewport_width = aspect_ratio * viewport_height;
 
-                vec3 w = normalize(lookfrom - lookat);
-                vec3 u = normalize(cross(up, w));
-                vec3 v = cross(w, u);
+                c.w = normalize(lookfrom - lookat);
+                c.u = normalize(cross(up, c.w));
+                c.v = cross(c.w, c.u);
 
                 c.origin = lookfrom;
-                c.horizontal = viewport_width * u;
-                c.vertical = viewport_height * v;
-                c.lower_left_corner = c.origin - c.horizontal / 2. - c.vertical / 2. - w;
+                c.horizontal = focus_dist * viewport_width * c.u;
+                c.vertical = focus_dist * viewport_height * c.v;
+                c.lower_left_corner = c.origin - c.horizontal / 2. - c.vertical / 2. - focus_dist * c.w;
+                c.lens_radius = aperture / 2.;
 
                 return c;
             }
             ray get_ray(camera c, float s, float t) {
+                vec3 rd = c.lens_radius * random_in_unit_disk(length(s + t));
+                vec3 offset = c.u * rd.x + c.v * rd.y;
+
                 ray r;
-                r.origin = c.origin;
-                r.dir = c.lower_left_corner + s * c.horizontal + t * c.vertical - c.origin;
+                r.origin = c.origin + offset;
+                r.dir = c.lower_left_corner + s * c.horizontal + t * c.vertical - c.origin - offset;
 
                 return r;
             }
@@ -287,7 +304,7 @@
                 
                 const float samples = 10.;
 
-                camera cam = create_camera(camPos, camLook, vec3(0, 1, 0), 50., 599. / 400.);
+                camera cam = create_camera(camPos, camLook, vec3(0, 1, 0),  20., 599. / 400., .5, length(camPos - camLook));
 
                 for(float i = 0.;i < samples;i += 1.) {
                     ray r = get_ray(cam, .5 + vPosition.x + cos(samples / i * 3.14) / (random_range(300., 1000., vPosition.x)), .5 + vPosition.y + sin(samples / i * 3.14) / (random_range(300., 1000., vPosition.y)));
