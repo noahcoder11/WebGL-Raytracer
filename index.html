@@ -322,7 +322,7 @@
                 material m1 = create_material(vec3(0.1, .2, .5), 0., 0., 0);
                 material m2 = create_material(vec3(.8, .8, .8), 0., 1.5, 2);
                 material m3 = create_material(vec3(.8, .6, .2), 0., 0., 1);
-                material gm = create_material(vec3(.8, .8, 0.), 0., 0., 0);
+                material gm = create_material(vec3(.8, .8, 0.), 0.5, 0., 1);
                 
                 world.spheres[0] = create_sphere(vec3(0., 0., -1.), .5, m1);
                 world.spheres[1] = create_sphere(vec3(-1., 0., -1.), .5, m2);
