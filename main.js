@@ -53,14 +53,17 @@ const camLk = gl.getUniform(program, "camLook");
 let cx = document.getElementById("camX")
 let cy = document.getElementById("camY")
 let cz = document.getElementById("camZ")
+let lx = document.getElementById("lookX")
+let ly = document.getElementById("lookY")
+let lz = document.getElementById("lookZ")
 
-
-let camLook = [0, 0, -1]
+let cam, camLook;
 
 gl.ctx.useProgram(program)
 
 function render() {
-    let cam = [cx.value, cy.value, cz.value]
+    cam = [cx.value, cy.value, cz.value]
+    camLook = [lx.value, ly.value, lz.value]
     
     gl.ctx.uniform3fv(camPos, cam)
     gl.ctx.uniform3fv(camLk, camLook)
