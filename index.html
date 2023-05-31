@@ -15,12 +15,18 @@
     <body>
         <div id="controls">
             <p>Camera X: </p>
-            <input id = "camX" name = "camX" type = "range" min = "-10" max = "10" value = "3" step = "0.01">
+            <input id = "camX" type = "range" min = "-10" max = "10" value = "3" step = "0.001">
             <p>Camera Y: </p>
-            <input id = "camY" name = "camY" type = "range" min = "-10" max = "10" value = "3" step = "0.01">
+            <input id = "camY" type = "range" min = "-10" max = "10" value = "3" step = "0.001">
             <p>Camera Z: </p>
-            <input id = "camZ" name = "camZ" type = "range" min = "-10" max = "10" value = "2" step = "0.01">
+            <input id = "camZ" type = "range" min = "-10" max = "10" value = "2" step = "0.001">
             
+            <p>Look X: </p>
+            <input id = "lookX" type = "range" min = "-10" max = "10" value = "0" step = "0.001">
+            <p>Look Y: </p>
+            <input id = "lookY" type = "range" min = "-10" max = "10" value = "0" step = "0.001">
+            <p>Look Z: </p>
+            <input id = "lookZ" type = "range" min = "-10" max = "10" value = "-1" step = "0.001">
         </div>
 
         <script src = "lib/WebGL.js"></script>
@@ -223,7 +229,7 @@
             }
 
             struct sphere_list {
-                sphere spheres[5];
+                sphere spheres[6];
             };
             hit_info hit_sphere_list(sphere_list l, ray r, float t_min, float t_max) {
                 hit_info final;
@@ -231,7 +237,7 @@
                 hit_info temp_info;
                 float closest = t_max;
 
-                for(int j = 0;j < 5;j++) {
+                for(int j = 0;j < 6;j++) {
                     temp_info = hit_sphere(l.spheres[j], r, t_min, closest);
 
                     if(temp_info.hit) {
@@ -322,13 +328,14 @@
                 material m1 = create_material(vec3(0.1, .2, .5), 0., 0., 0);
                 material m2 = create_material(vec3(.8, .8, .8), 0., 1.5, 2);
                 material m3 = create_material(vec3(.8, .6, .2), 0., 0., 1);
-                material gm = create_material(vec3(.8, .8, 0.), 0.5, 0., 1);
+                material gm = create_material(vec3(.5, .5, .5), .5, 0., 1);
                 
                 world.spheres[0] = create_sphere(vec3(0., 0., -1.), .5, m1);
                 world.spheres[1] = create_sphere(vec3(-1., 0., -1.), .5, m2);
                 world.spheres[2] = create_sphere(vec3(1., 0., -1.), .5, m3);
                 world.spheres[3] = create_sphere(vec3(0., -100.5, -1.), 100., gm);
-                world.spheres[4] = create_sphere(vec3(-1., 0., -1.), -.45, m2);
+                world.spheres[4] = create_sphere(vec3(-1., 0., -1.), -.4, m2);
+                world.spheres[5] = create_sphere(vec3(2., 0., -1.), .5, m2);
                 
                 const float samples = 10.;
 
